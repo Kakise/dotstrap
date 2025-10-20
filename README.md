@@ -19,6 +19,14 @@ those templates.
 - **First-class tests:** The crate ships with 100 % unit test coverage and CI
   enforcement.
 
+## Install
+
+### From source (requires Rust)
+
+```bash
+cargo install dotstrap --git https://github.com/Kakise/dotstrap.git
+```
+
 ## Code Structure
 
 - `src/application/` – orchestrates the end-to-end workflow and exposes `run`.
