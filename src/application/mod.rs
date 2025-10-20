@@ -28,7 +28,7 @@ pub struct ExecutionReport {
 
 /// Run dotstrap using the system command executor.
 pub fn run(cli: Cli) -> Result<ExecutionReport> {
-    let executor = SystemCommandExecutor::default();
+    let executor = SystemCommandExecutor;
     run_with_executor(cli, &executor)
 }
 
