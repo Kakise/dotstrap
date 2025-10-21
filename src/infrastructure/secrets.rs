@@ -158,4 +158,32 @@ mod tests {
         let err = load_secrets(repo.path(), repo.path()).unwrap_err();
         matches!(err, DotstrapError::MissingSecret { .. });
     }
+
+    #[test]
+    fn returns_empty_when_secrets_file_missing() {
+        let repo = tempfile::tempdir().unwrap();
+        let secrets = load_secrets(repo.path(), repo.path()).unwrap();
+        assert!(secrets.is_empty());
+    }
+
+    #[test]
+    fn optional_env_secret_is_ignored_when_missing() {
+        let repo = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(repo.path().join("secrets")).unwrap();
+        fs::write(
+            repo.path().join(SECRETS_PATH),
+            "token:\n  from: env\n  key: OPTIONAL_SECRET\n  optional: true\n",
+        )
+        .unwrap();
+        let secrets = load_secrets(repo.path(), repo.path()).unwrap();
+        assert!(secrets.is_empty());
+    }
+
+    #[test]
+    fn expand_path_preserves_absolute_paths() {
+        let home = tempfile::tempdir().unwrap();
+        let repo = tempfile::tempdir().unwrap();
+        let absolute = repo.path().join("nested").join("secret.txt");
+        assert_eq!(expand_path(&absolute, home.path(), repo.path()), absolute);
+    }
 }

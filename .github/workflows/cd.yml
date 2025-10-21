@@ -1,0 +1,60 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+  CRATE_NAME: dotstrap
+
+jobs:
+  publish:
+    name: Publish Crate
+    runs-on: ubuntu-latest
+    if: secrets.CARGO_REGISTRY_TOKEN != ''
+    permissions:
+      contents: read
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-edit
+        run: cargo install cargo-edit --locked
+
+      - name: Determine release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_version="$(cargo metadata --no-deps --format-version 1 | jq -r --arg name "$CRATE_NAME" '.packages[] | select(.name == $name) | .version')"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            release_version="${GITHUB_REF_NAME#v}"
+          else
+            sha="$(git rev-parse --short HEAD)"
+            release_version="${base_version}+${sha}"
+          fi
+
+          echo "base=${base_version}" >> "$GITHUB_OUTPUT"
+          echo "release=${release_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Update crate version
+        run: cargo set-version --package "$CRATE_NAME" "${{ steps.version.outputs.release }}"
+
+      - name: Verify package
+        run: cargo publish --dry-run --locked --allow-dirty
+
+      - name: Publish crate
+        run: cargo publish --locked --allow-dirty

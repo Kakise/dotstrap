@@ -242,4 +242,23 @@ formulae:
         remove_env("DOTSTRAP_TEST_TOKEN");
         drop(_guard);
     }
+
+    #[test]
+    fn run_entrypoint_uses_system_executor() {
+        let repo = create_repo_without_brew();
+        let _guard = ENV_LOCK.lock().unwrap();
+        set_env("DOTSTRAP_TEST_TOKEN", "secret");
+        let home = tempfile::tempdir().unwrap();
+        let cli = Cli {
+            source: repo.path().to_string_lossy().to_string(),
+            home: Some(home.path().to_path_buf()),
+            skip_brew: true,
+            dry_run: true,
+        };
+        let report = run(cli).unwrap();
+        assert_eq!(report.rendered, vec![PathBuf::from(".configfile")]);
+        assert!(report.brew_commands.is_empty());
+        remove_env("DOTSTRAP_TEST_TOKEN");
+        drop(_guard);
+    }
 }

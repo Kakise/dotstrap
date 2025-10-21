@@ -236,4 +236,12 @@ mod tests {
             assert_eq!(metadata.mode() & 0o777, 0o700);
         }
     }
+
+    #[test]
+    fn reconcile_existing_is_noop_when_file_missing() {
+        let temp = tempfile::tempdir().unwrap();
+        let missing = temp.path().join(".missing");
+        reconcile_existing(&missing).unwrap();
+        assert!(!temp.path().join(".dotstrap-backups").exists());
+    }
 }

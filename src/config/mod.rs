@@ -163,4 +163,29 @@ mod tests {
         let spec = load_brew_spec(repo.path()).unwrap().unwrap();
         assert_eq!(spec.formulae, vec!["ripgrep"]);
     }
+
+    #[test]
+    fn load_values_returns_empty_for_non_object() {
+        let repo = tempdir().unwrap();
+        fs::write(repo.path().join(VALUES_NAME), "- item\n").unwrap();
+        let values = load_values(repo.path()).unwrap();
+        assert!(values.is_empty());
+    }
+
+    #[test]
+    fn load_values_reports_yaml_errors() {
+        let repo = tempdir().unwrap();
+        fs::write(repo.path().join(VALUES_NAME), "bad: [unclosed\n").unwrap();
+        let err = load_values(repo.path()).unwrap_err();
+        matches!(err, DotstrapError::Yaml { .. });
+    }
+
+    #[test]
+    fn load_brew_spec_reports_yaml_errors() {
+        let repo = tempdir().unwrap();
+        fs::create_dir_all(repo.path().join("brew")).unwrap();
+        fs::write(repo.path().join(BREW_PATH), "formulae: [oops\n").unwrap();
+        let err = load_brew_spec(repo.path()).unwrap_err();
+        matches!(err, DotstrapError::Yaml { .. });
+    }
 }

@@ -109,4 +109,48 @@ mod tests {
         let data = std::fs::read_to_string(&rendered.templates[0].rendered_path).unwrap();
         assert_eq!(data, "Hello world");
     }
+
+    #[test]
+    fn reports_compile_errors() {
+        let repo = tempfile::tempdir().unwrap();
+        let template_path = repo.path().join("templates/bad.txt");
+        std::fs::create_dir_all(template_path.parent().unwrap()).unwrap();
+        std::fs::write(&template_path, "{{#if name}}").unwrap();
+        let manifest = Manifest {
+            version: 1,
+            templates: vec![TemplateMapping {
+                source: PathBuf::from("templates/bad.txt"),
+                destination: PathBuf::from(".bad"),
+                mode: None,
+            }],
+        };
+        let context = build_context(&HashMap::new(), &HashMap::new());
+        let err = match render_templates(repo.path(), &manifest, &context) {
+            Ok(_) => panic!("expected template compilation to fail"),
+            Err(err) => err,
+        };
+        matches!(err, DotstrapError::TemplateCompile { .. });
+    }
+
+    #[test]
+    fn reports_render_errors() {
+        let repo = tempfile::tempdir().unwrap();
+        let template_path = repo.path().join("templates/partial.txt");
+        std::fs::create_dir_all(template_path.parent().unwrap()).unwrap();
+        std::fs::write(&template_path, "{{> missing_partial}}").unwrap();
+        let manifest = Manifest {
+            version: 1,
+            templates: vec![TemplateMapping {
+                source: PathBuf::from("templates/partial.txt"),
+                destination: PathBuf::from(".partial"),
+                mode: None,
+            }],
+        };
+        let context = build_context(&HashMap::new(), &HashMap::new());
+        let err = match render_templates(repo.path(), &manifest, &context) {
+            Ok(_) => panic!("expected template rendering to fail"),
+            Err(err) => err,
+        };
+        matches!(err, DotstrapError::Template { .. });
+    }
 }
