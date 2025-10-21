@@ -9,12 +9,9 @@ use std::path::PathBuf;
 use crate::cli::Cli;
 use crate::config;
 use crate::errors::{DotstrapError, Result};
-use crate::infrastructure::command::CommandExecutor;
+use crate::infrastructure::command::{CommandExecutor, SystemCommandExecutor};
 use crate::infrastructure::{repository, secrets};
 use crate::services::{brew, linker, templating};
-
-#[cfg(not(test))]
-use crate::infrastructure::command::SystemCommandExecutor;
 
 /// Summary of the operations performed during a dotstrap run.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -30,7 +27,6 @@ pub struct ExecutionReport {
 }
 
 /// Run dotstrap using the system command executor.
-#[cfg(not(test))]
 pub fn run(cli: Cli) -> Result<ExecutionReport> {
     let executor = SystemCommandExecutor;
     run_with_executor(cli, &executor)
@@ -99,6 +95,13 @@ mod tests {
             skip_brew: brew,
             dry_run: true,
         }
+    }
+
+    #[test]
+    fn test_run() {
+        let cli = create_test_cli(None, None, true);
+        let result = super::run(cli);
+        assert!(result.is_ok());
     }
 
     #[test]

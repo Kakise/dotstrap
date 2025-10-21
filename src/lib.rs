@@ -3,7 +3,6 @@
 
 //! Core library entry point for dotstrap.
 
-#[cfg(not(test))]
 use clap::Parser;
 
 pub mod application;
@@ -13,13 +12,11 @@ pub mod errors;
 pub mod infrastructure;
 pub mod services;
 
-#[cfg(not(test))]
 pub use application::{ExecutionReport, run, run_with_executor};
 pub use cli::Cli;
 pub use errors::{DotstrapError, Result};
 
 /// Execute the CLI entrypoint using the provided iterator of arguments.
-#[cfg(not(test))]
 pub fn execute_cli<I, T>(args: I) -> i32
 where
     I: IntoIterator<Item = T>,
