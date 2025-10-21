@@ -15,7 +15,7 @@ jobs:
   publish:
     name: Publish Crate
     runs-on: ubuntu-latest
-    if: secrets.CARGO_REGISTRY_TOKEN != ''
+    if: ${{ secrets.CARGO_REGISTRY_TOKEN != '' }}
     permissions:
       contents: read
     env:
