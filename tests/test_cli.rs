@@ -11,12 +11,24 @@ fn test_main() {
 
 #[test]
 fn test_dry_run() {
+    #[cfg(target_os = "macos")]
     Command::cargo_bin("dotstrap")
         .unwrap()
         .arg("tests/config-brew")
         .arg("--dry-run")
         .assert()
         .success();
+
+    #[cfg(not(target_os = "macos"))]
+    Command::cargo_bin("dotstrap")
+        .unwrap()
+        .arg("tests/config-brew")
+        .arg("--dry-run")
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "dotstrap failed: Homebrew is not installed or not executable\n",
+        ));
 }
 
 #[test]
