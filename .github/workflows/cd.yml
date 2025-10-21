@@ -58,3 +58,70 @@ jobs:
 
       - name: Publish crate
         run: cargo publish --locked --allow-dirty
+
+  brew-binaries:
+    name: Build macOS binaries
+    needs: publish
+    if: ${{ github.ref_type == 'tag' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-edit
+        run: cargo install cargo-edit --locked
+
+      - name: Determine release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_version="$(cargo metadata --no-deps --format-version 1 | jq -r --arg name "$CRATE_NAME" '.packages[] | select(.name == $name) | .version')"
+          release_version="${base_version}"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            release_version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "base=${base_version}" >> "$GITHUB_OUTPUT"
+          echo "release=${release_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set crate version
+        run: cargo set-version --package "$CRATE_NAME" "${{ steps.version.outputs.release }}"
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Package binary
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          filename="dotstrap-${{ steps.version.outputs.release }}-${{ matrix.target }}.tar.gz"
+          tar -czf "$filename" -C target/release dotstrap
+          sha="$(shasum -a 256 "$filename" | awk '{print $1}')"
+          printf "%s" "$sha" > "$filename.sha256"
+          echo "filename=$filename" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.package.outputs.filename }}
+
+      - name: Upload checksum artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha-${{ matrix.target }}
+          path: ${{ steps.package.outputs.filename }}.sha256

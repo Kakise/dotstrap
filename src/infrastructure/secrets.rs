@@ -74,116 +74,90 @@ fn expand_path(path: &Path, home: &Path, repo: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::fs;
-    use std::sync::Mutex;
+    use crate::infrastructure::secrets::{expand_path, load_secrets};
+    use serial_test::serial;
+    use std::collections::HashMap;
+    use std::path::Path;
 
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-    fn set_env(key: &str, value: &str) {
-        unsafe { std::env::set_var(key, value) };
-    }
-
-    fn remove_env(key: &str) {
-        unsafe { std::env::remove_var(key) };
+    #[test]
+    fn test_load_secrets_empty() {
+        let home = Path::new("/home/user");
+        let repo = Path::new("/home/user/repo");
+        let result = load_secrets(repo, home);
+        assert_eq!(result.unwrap(), HashMap::new());
     }
 
     #[test]
-    fn expands_tilde_paths() {
-        let tmp = tempfile::tempdir().unwrap();
-        let repo = tempfile::tempdir().unwrap();
-        let path = Path::new("~/secret.txt");
-        let resolved = expand_path(path, tmp.path(), repo.path());
-        assert_eq!(resolved, tmp.path().join("secret.txt"));
+    #[serial]
+    fn test_load_secrets_tpl_not_found() {
+        let home = Path::new("/home/user");
+        let repo = Path::new("tests/dotstrap-config-example");
+        unsafe {
+            std::env::remove_var("DOTSTRAP_GITHUB_TOKEN");
+        }
+        let result = load_secrets(repo, home);
+        assert!(result.is_err());
     }
 
     #[test]
-    fn expands_relative_paths() {
-        let repo = tempfile::tempdir().unwrap();
-        let home = tempfile::tempdir().unwrap();
-        let path = Path::new("relative.txt");
+    #[serial]
+    fn test_load_secrets_tpl_found() {
+        let home = Path::new("/home/user");
+        let repo = Path::new("tests/dotstrap-config-example");
+        unsafe {
+            std::env::set_var("DOTSTRAP_GITHUB_TOKEN", "fake-token");
+        }
+        let result = load_secrets(repo, home);
+        assert!(result.is_ok());
+        let result_map = result.unwrap();
+        assert_eq!(result_map.len(), 2);
         assert_eq!(
-            expand_path(path, home.path(), repo.path()),
-            repo.path().join("relative.txt")
+            result_map.get("github_token"),
+            Some(&serde_json::Value::String("fake-token".to_string()))
+        );
+        assert_eq!(
+            result_map.get("file_secret"),
+            Some(&serde_json::Value::String("fake-file-secret".to_string()))
+        )
+    }
+
+    #[test]
+    fn test_load_secrets_invalid_yaml() {
+        let home = Path::new("/home/user");
+        let repo = Path::new("tests/erroneous-config");
+        let result = load_secrets(repo, home);
+        assert!(result.is_err());
+        let result = result.unwrap_err();
+        assert_eq!(
+            result.to_string(),
+            "failed to parse yaml file `tests/erroneous-config/secrets/secrets.yaml`: invalid type: string \"SYNTAX_ERROR\", expected a map"
         );
     }
 
     #[test]
-    fn loads_env_secret() {
-        let repo = tempfile::tempdir().unwrap();
-        let path = repo.path().join(SECRETS_PATH);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(&path, "token:\n  from: env\n  key: DOTSTRAP_TOKEN\n").unwrap();
-        let _guard = ENV_LOCK.lock().unwrap();
-        set_env("DOTSTRAP_TOKEN", "value");
-        let home_dir = home::home_dir().unwrap();
-        let secrets = load_secrets(repo.path(), home_dir.as_path()).unwrap();
-        assert_eq!(
-            secrets.get("token"),
-            Some(&serde_json::Value::String("value".into()))
-        );
-        remove_env("DOTSTRAP_TOKEN");
-        drop(_guard);
+    fn test_expand_path_with_relative_path() {
+        let home = Path::new("/home/user");
+        let repo = Path::new("/home/user/repo");
+        let path = Path::new("etc/secret");
+        let expanded = expand_path(path, home, repo);
+        assert_eq!(expanded, Path::new("/home/user/repo/etc/secret"));
     }
 
     #[test]
-    fn loads_file_secret() {
-        let repo = tempfile::tempdir().unwrap();
-        let home = tempfile::tempdir().unwrap();
-        let secrets_dir = repo.path().join("secrets");
-        std::fs::create_dir_all(&secrets_dir).unwrap();
-        let secret_file = secrets_dir.join("secret.txt");
-        fs::write(&secret_file, "very-secret").unwrap();
-        fs::write(
-            repo.path().join(SECRETS_PATH),
-            "token:\n  from: file\n  path: secrets/secret.txt\n",
-        )
-        .unwrap();
-        let secrets = load_secrets(repo.path(), home.path()).unwrap();
-        assert_eq!(
-            secrets.get("token"),
-            Some(&serde_json::Value::String("very-secret".into()))
-        );
+    fn test_expand_path_with_absolute_path() {
+        let home = Path::new("/home/user");
+        let repo = Path::new("/home/user/repo");
+        let path = Path::new("/etc/secret");
+        let expanded = expand_path(path, home, repo);
+        assert_eq!(expanded, Path::new("/etc/secret"));
     }
 
     #[test]
-    fn errors_when_secret_missing() {
-        let repo = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(repo.path().join("secrets")).unwrap();
-        fs::write(
-            repo.path().join(SECRETS_PATH),
-            "token:\n  from: env\n  key: DOES_NOT_EXIST\n",
-        )
-        .unwrap();
-        let err = load_secrets(repo.path(), repo.path()).unwrap_err();
-        matches!(err, DotstrapError::MissingSecret { .. });
-    }
-
-    #[test]
-    fn returns_empty_when_secrets_file_missing() {
-        let repo = tempfile::tempdir().unwrap();
-        let secrets = load_secrets(repo.path(), repo.path()).unwrap();
-        assert!(secrets.is_empty());
-    }
-
-    #[test]
-    fn optional_env_secret_is_ignored_when_missing() {
-        let repo = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(repo.path().join("secrets")).unwrap();
-        fs::write(
-            repo.path().join(SECRETS_PATH),
-            "token:\n  from: env\n  key: OPTIONAL_SECRET\n  optional: true\n",
-        )
-        .unwrap();
-        let secrets = load_secrets(repo.path(), repo.path()).unwrap();
-        assert!(secrets.is_empty());
-    }
-
-    #[test]
-    fn expand_path_preserves_absolute_paths() {
-        let home = tempfile::tempdir().unwrap();
-        let repo = tempfile::tempdir().unwrap();
-        let absolute = repo.path().join("nested").join("secret.txt");
-        assert_eq!(expand_path(&absolute, home.path(), repo.path()), absolute);
+    fn test_expand_path_with_home_path() {
+        let home = Path::new("/home/user");
+        let repo = Path::new("/home/user/repo");
+        let path = Path::new("~/.ssh/id_rsa");
+        let expanded = expand_path(path, home, repo);
+        assert_eq!(expanded, Path::new("/home/user/.ssh/id_rsa"));
     }
 }

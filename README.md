@@ -16,7 +16,7 @@ those templates.
   linked into the home directory with automatic backups for pre-existing files.
 - **Homebrew automation:** Keep `brew` taps, formulae, and casks in version
   control and install them in one run.
-- **First-class tests:** The crate ships with 100 % unit test coverage and CI
+- **First-class tests:** The crate ships with 100 % unit test coverage and CI
   enforcement.
 
 ## Install
@@ -30,7 +30,7 @@ cargo install dotstrap --git https://github.com/Kakise/dotstrap.git
 ## Code Structure
 
 - `src/application/` – orchestrates the end-to-end workflow and exposes `run`.
-- `src/cli/` – CLI definition built with `clap::Parser`.
+- `src/CLI/` – CLI definition built with `clap::Parser`.
 - `src/config/` – strongly typed manifest and Homebrew loaders.
 - `src/infrastructure/` – integrations for commands, repositories, and secrets.
 - `src/services/` – reusable operations such as rendering, linking, and brew installation.
@@ -40,7 +40,7 @@ cargo install dotstrap --git https://github.com/Kakise/dotstrap.git
 
 ## Repository layout
 
-```ignore
+```text
 manifest.yaml           # Template manifest (required)
 values.yaml             # Shared key/value pairs (optional)
 brew/packages.yaml      # Homebrew taps/formulae/casks (optional)
@@ -124,7 +124,7 @@ cargo tarpaulin --fail-under 100
 
 `.github/workflows/ci.yml` runs `cargo fmt`, `cargo clippy`, the unit tests, and
 tarpaulin with `--fail-under 100`. Copy the workflow into your fork to keep
-coverage locked at 100 %.
+coverage locked at 100 %.
 
 ## License
 

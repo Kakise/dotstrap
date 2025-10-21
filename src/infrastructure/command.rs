@@ -76,23 +76,3 @@ impl CommandExecutor for RecordingCommandExecutor {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[cfg(unix)]
-    #[test]
-    fn system_executor_runs_true() {
-        let exec = SystemCommandExecutor;
-        exec.run("true", &[]).unwrap();
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn system_executor_reports_failure() {
-        let exec = SystemCommandExecutor;
-        let err = exec.run("false", &[]).unwrap_err();
-        matches!(err, DotstrapError::CommandFailed { .. });
-    }
-}

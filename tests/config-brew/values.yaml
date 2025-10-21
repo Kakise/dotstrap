@@ -1,0 +1,5 @@
+name: John Doe
+email: john.doe@example.com
+shell: /bin/zsh
+editor: nvim
+theme: catppuccin

@@ -1,0 +1,13 @@
+taps:
+  - homebrew/cask
+  - homebrew/cask-fonts
+formulae:
+  - git
+  - ripgrep
+  - fd
+  - starship
+  - neovim
+casks:
+  - iterm2
+  - alacritty
+  - font-jetbrains-mono-nerd-font

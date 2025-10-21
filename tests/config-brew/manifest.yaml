@@ -1,0 +1,9 @@
+version: 1
+templates:
+  - source: templates/gitconfig.hbs
+    destination: .gitconfig
+    mode: 0o600
+  - source: templates/zshrc.hbs
+    destination: .zshrc
+  - source: templates/wezterm.lua.hbs
+    destination: .wezterm.lua

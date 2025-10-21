@@ -1,0 +1,11 @@
+export SHELL={{shell}}
+export EDITOR={{editor}}
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Secrets pulled at runtime
+export GITHUB_TOKEN={{secrets.github_token}}
+
+# Load aliases
+if [ -f "$HOME/.aliases" ]; then
+  source "$HOME/.aliases"
+fi

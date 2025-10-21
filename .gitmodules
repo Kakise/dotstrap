@@ -1,0 +1,3 @@
+[submodule "tests/dotstrap-config-example"]
+	path = tests/dotstrap-config-example
+	url = https://github.com/Kakise/dotstrap-config-example.git
