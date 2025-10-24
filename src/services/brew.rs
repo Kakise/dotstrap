@@ -129,7 +129,11 @@ mod tests {
             calls[2],
             (
                 "brew".to_string(),
-                vec!["tap".to_string(), "homebrew/cask".to_string()]
+                vec![
+                    "tap".to_string(),
+                    "homebrew/cask".to_string(),
+                    "--force".to_string()
+                ]
             )
         );
         assert_eq!(
