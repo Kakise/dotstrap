@@ -3,7 +3,9 @@
 
 //! Core library entry point for dotstrap.
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::generate;
+use std::io::{self, Write};
 
 pub mod application;
 pub mod cli;
@@ -22,7 +24,27 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    let cli = Cli::parse_from(args);
+    let args_vec: Vec<std::ffi::OsString> = args.into_iter().map(|arg| arg.into()).collect();
+    let cli = match Cli::try_parse_from(args_vec) {
+        Ok(cli) => cli,
+        Err(error) => {
+            let _ = error.print();
+            return if error.use_stderr() { 1 } else { 0 };
+        }
+    };
+
+    if let Some(shell) = cli.generate_completions {
+        let mut command = Cli::command();
+        command.set_bin_name("dotstrap");
+        let mut stdout = io::stdout();
+        generate(shell, &mut command, "dotstrap", &mut stdout);
+        if let Err(err) = stdout.flush() {
+            eprintln!("failed to flush completions to stdout: {err}");
+            return 1;
+        }
+        return 0;
+    }
+
     match run(cli) {
         Ok(report) => {
             if report.dry_run {

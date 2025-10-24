@@ -37,29 +37,39 @@ pub fn run_with_executor<E>(cli: Cli, executor: &E) -> Result<ExecutionReport>
 where
     E: CommandExecutor,
 {
-    let home_dir = match cli.home.clone() {
+    let Cli {
+        source,
+        home,
+        skip_brew,
+        dry_run,
+        generate_completions: _,
+    } = cli;
+
+    let source = source.expect("source argument is validated by clap");
+
+    let home_dir = match home {
         Some(path) => path,
         None => home::home_dir().ok_or(DotstrapError::HomeNotFound)?,
     };
 
-    let repo = repository::resolve_repository(&cli.source, executor)?;
+    let repo = repository::resolve_repository(&source, executor)?;
     let manifest = config::load_manifest(repo.path())?;
     let values = config::load_values(repo.path())?;
     let secrets = secrets::load_secrets(repo.path(), &home_dir)?;
     let context = templating::build_context(&values, &secrets);
     let rendered_set = templating::render_templates(repo.path(), &manifest, &context)?;
-    let linked = linker::link_templates(&home_dir, &rendered_set, cli.dry_run)?;
+    let linked = linker::link_templates(&home_dir, &rendered_set, dry_run)?;
     let rendered_destinations = manifest
         .templates
         .iter()
         .map(|t| t.destination.clone())
         .collect();
 
-    let brew_commands = if cli.skip_brew {
+    let brew_commands = if skip_brew {
         Vec::new()
     } else {
         match config::load_brew_spec(repo.path())? {
-            Some(spec) => brew::install_brew(&spec, executor, cli.dry_run)?,
+            Some(spec) => brew::install_brew(&spec, executor, dry_run)?,
             None => Vec::new(),
         }
     };
@@ -68,7 +78,7 @@ where
         rendered: rendered_destinations,
         linked,
         brew_commands,
-        dry_run: cli.dry_run,
+        dry_run,
     })
 }
 
@@ -90,10 +100,11 @@ mod tests {
         brew: bool,
     ) -> super::Cli {
         super::Cli {
-            source: "tests/".to_owned() + source.unwrap_or("empty-config"),
+            source: Some("tests/".to_owned() + source.unwrap_or("empty-config")),
             home: home_dir.to_owned(),
             skip_brew: brew,
             dry_run: true,
+            generate_completions: None,
         }
     }
 

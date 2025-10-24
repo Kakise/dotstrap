@@ -17,7 +17,13 @@ pub fn install_brew(
     ensure_available(executor)?;
     maybe_run(executor, dry_run, &mut executed, "brew", &["update"])?;
     for tap in &spec.taps {
-        maybe_run(executor, dry_run, &mut executed, "brew", &["tap", tap])?;
+        maybe_run(
+            executor,
+            dry_run,
+            &mut executed,
+            "brew",
+            &["tap", tap, "--force"],
+        )?;
     }
     for formula in &spec.formulae {
         maybe_run(

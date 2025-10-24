@@ -68,3 +68,14 @@ fn test_main_with_invalid_args() {
             "unexpected argument '--invalid-flag'",
         ));
 }
+
+#[test]
+fn test_generate_zsh_completions() {
+    Command::cargo_bin("dotstrap")
+        .unwrap()
+        .arg("--generate-completions")
+        .arg("zsh")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("_dotstrap"));
+}
