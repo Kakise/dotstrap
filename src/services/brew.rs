@@ -103,7 +103,7 @@ mod tests {
 
         let expected_logged = vec![
             "brew update".to_string(),
-            "brew tap homebrew/cask".to_string(),
+            "brew tap homebrew/cask --force".to_string(),
             "brew install fzf".to_string(),
             "brew install --cask iterm2".to_string(),
         ];
